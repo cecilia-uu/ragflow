@@ -24,10 +24,47 @@ class RAGFLow(ABC):
         self.base_url = base_url
 
     def create_dataset(self, name):
-        return name
+        endpoint = f'{self.base_url}/api/v1/datasets'
+        data = {'name': name}
+        response = requests.post(endpoint, json=data)
+        if response.status_code == 200:
+            res = response.json()
+            return {'Name': res.get('Name'), 'Id': res.get('Id')}
+        else:
+            return None
+
+    def delete_dataset_by_id(self, dataset_id):
+        """delete a dataset by id"""
+        endpoint = f"{self.base_url}/api/v1/dataset/{dataset_id}"
+        response = requests.delete(endpoint)
+        if response.status_code == 200:
+            return True
+        else:
+            return False
 
     def delete_dataset(self, name):
-        return name
+        """delete a dataset"""
+        datasets = self.list_dataset()
+
+        dataset_to_delete = None
+        for dataset in datasets:
+            if dataset["name"] == name:
+                dataset_to_delete = dataset
+                break
+
+        # find the dataset
+        if dataset_to_delete:
+            dataset_id = dataset_to_delete["id"]
+            result = self.delete_dataset_by_id(dataset_id)
+            if result:
+                print(f"You have deleted the dataset: '{name}'！")
+                return True
+            else:
+                print(f"Failed to delete the dataset '{name}' ！")
+                return False
+        else:
+            print(f"There is no '{name}' ！")
+            return False
 
     def list_dataset(self):
         endpoint = f"{self.base_url}/api/v1/dataset"

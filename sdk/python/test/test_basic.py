@@ -1,8 +1,10 @@
+import requests
+
 from test_sdkbase import TestSdk
 import ragflow
 from ragflow.ragflow import RAGFLow
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 
 class TestCase(TestSdk):
@@ -15,8 +17,26 @@ class TestCase(TestSdk):
     def test_version(self):
         print(ragflow.__version__)
 
-    def test_create_dataset(self):
-        assert ragflow.ragflow.RAGFLow('123', 'url').create_dataset('abc') == 'abc'
+    def test_create_dataset(mocker):
+        # 设置模拟的请求响应
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"name": "abc", "id": 123}
+
+        # 使用 pytest-mock 模拟 requests.post 方法
+        mocker.patch('requests.post', return_value=mock_response)
+
+        # 实例化 RAGFLow 类
+        ragflow = RAGFLow(user_key='user_key', base_url='http://example.com')
+
+        # 调用方法
+        result = ragflow.create_dataset('dataset1')
+
+        # 检查结果
+        assert result == {"Name": "abc", "Id": 123}
+
+        # 检查 requests.post 是否被调用
+        requests.post.assert_called_once_with('http://example.com/api/v1/dataset', json={"name": "dataset1"})
 
     def test_delete_dataset(self):
         assert ragflow.ragflow.RAGFLow('123', 'url').delete_dataset('abc') == 'abc'
