@@ -44,125 +44,6 @@ def generate_confirmation_token(tenent_id):
     serializer = URLSafeTimedSerializer(tenent_id)
     return "ragflow-" + serializer.dumps(get_uuid(), salt=tenent_id)[2:34]
 
-# create a dataset
-@manager.route('/dataset/create', methods=['POST'])
-@login_required
-@validate_request("name")
-def create():
-    req = request.json
-    req["name"] = req["name"].strip()
-    req["name"] = duplicate_name(
-        KnowledgebaseService.query,
-        name=req["name"],
-        tenant_id=current_user.id,
-        status=StatusEnum.VALID.value)
-    try:
-        req["id"] = get_uuid()
-        req["tenant_id"] = current_user.id
-        req["created_by"] = current_user.id
-        e, t = TenantService.get_by_id(current_user.id)
-        if not e:
-            return get_data_error_result(retmsg="Tenant not found.")
-        req["embd_id"] = t.embd_id
-        if not KnowledgebaseService.save(**req):
-            return get_data_error_result()
-        return get_json_result(data={"kb_id": req["id"]})
-    except Exception as e:
-        return server_error_response(e)
-
-# update
-@manager.route('/dataset/<kb_id>', methods=['PUT'])
-@login_required
-@validate_request("name", "description", "permission", "parser_id")
-def update(kb_id):
-    req = request.json
-    req["name"] = req["name"].strip()
-    try:
-        if not KnowledgebaseService.query(
-                created_by=current_user.id, id=req["kb_id"]):
-            return get_json_result(
-                data=False, retmsg=f'Only owner of knowledgebase authorized for this operation.', retcode=RetCode.OPERATING_ERROR)
-
-        e, kb = KnowledgebaseService.get_by_id(req["kb_id"])
-        if not e:
-            return get_data_error_result(
-                retmsg="Can't find this knowledgebase!")
-
-        if req["name"].lower() != kb.name.lower() \
-                and len(KnowledgebaseService.query(name=req["name"], tenant_id=current_user.id, status=StatusEnum.VALID.value)) > 1:
-            return get_data_error_result(
-                retmsg="Duplicated knowledgebase name.")
-
-        del req["kb_id"]
-        if not KnowledgebaseService.update_by_id(kb.id, req):
-            return get_data_error_result()
-
-        e, kb = KnowledgebaseService.get_by_id(kb.id)
-        if not e:
-            return get_data_error_result(
-                retmsg="Database error (Knowledgebase rename)!")
-
-        return get_json_result(data=kb.to_json())
-    except Exception as e:
-        return server_error_response(e)
-
-# list
-@manager.route('/', methods=['GET'])
-@login_required
-def list_kbs():
-    page_number = request.args.get("page", 1)
-    items_per_page = request.args.get("page_size", 150)
-    orderby = request.args.get("orderby", "create_time")
-    desc = request.args.get("desc", True)
-    try:
-        tenants = TenantService.get_joined_tenants_by_user_id(current_user.id)
-        kbs = KnowledgebaseService.get_by_tenant_ids(
-            [m["tenant_id"] for m in tenants], current_user.id, page_number, items_per_page, orderby, desc)
-        return get_json_result(data=kbs)
-    except Exception as e:
-        return server_error_response(e)
-
-# remove
-@manager.route('/<kb_id>', methods=['delete'])
-@login_required
-@validate_request("kb_id")
-def rm():
-    req = request.json
-    try:
-        kbs = KnowledgebaseService.query(
-                created_by=current_user.id, id=req["kb_id"])
-        if not kbs:
-            return get_json_result(
-                data=False, retmsg=f'Only owner of knowledgebase authorized for this operation.', retcode=RetCode.OPERATING_ERROR)
-
-        for doc in DocumentService.query(kb_id=req["kb_id"]):
-            if not DocumentService.remove_document(doc, kbs[0].tenant_id):
-                return get_data_error_result(
-                    retmsg="Database error (Document removal)!")
-            f2d = File2DocumentService.get_by_document_id(doc.id)
-            FileService.filter_delete([File.source_type == FileSource.KNOWLEDGEBASE, File.id == f2d[0].file_id])
-            File2DocumentService.delete_by_document_id(doc.id)
-
-        if not KnowledgebaseService.delete_by_id(req["kb_id"]):
-            return get_data_error_result(
-                retmsg="Database error (Knowledgebase removal)!")
-        return get_json_result(data=True)
-    except Exception as e:
-        return server_error_response(e)
-
-# show details of the specific kb
-@manager.route('/<kb_id>', methods=['GET'])
-@login_required
-def detail():
-    kb_id = request.args["kb_id"]
-    try:
-        kb = KnowledgebaseService.get_detail(kb_id)
-        if not kb:
-            return get_data_error_result(
-                retmsg="Can't find this knowledgebase!")
-        return get_json_result(data=kb)
-    except Exception as e:
-        return server_error_response(e)
 
 @manager.route('/new_token', methods=['POST'])
 @validate_request("dialog_id")
@@ -559,7 +440,7 @@ def list_kb_docs():
         docs = [{"doc_id": doc['id'], "doc_name": doc['name']} for doc in docs]
 
         return get_json_result(data={"total": tol, "docs": docs})
-    
+
     except Exception as e:
         return server_error_response(e)
 
