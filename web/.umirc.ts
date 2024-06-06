@@ -30,7 +30,7 @@ export default defineConfig({
   copy: ['src/conf.json'],
   proxy: {
     '/v1': {
-      target: '',
+      target: 'http://localhost:9380',
       changeOrigin: true,
       ws: true,
       logger: console,

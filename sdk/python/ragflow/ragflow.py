@@ -89,3 +89,47 @@ class RAGFLow(ABC):
             return True
         else:
             return False
+
+    # --------------------file management--------------
+    def create_directory(self, path):
+        pass
+
+    def delete_directory(self, path):
+        pass
+
+    def move_directory(self, old_path, new_path):
+        pass
+
+    def get_directory(self, path):
+        """return attributes about dir"""
+        pass
+
+    def copy_directory(self, new_path):
+        pass
+
+    def update_directory(self, path, new_info):
+        pass
+
+    # a file
+    def create_file(self, file, kb_id):
+        """return file_id"""
+        pass
+
+    def get_file(self, file_id):
+        pass
+
+    def list_file(self, kb_id, page_size, page):
+        pass
+
+    def update_file(self, file_id, file_name, enable, chunk_method, chunk_token_number, use_raptor):
+        pass
+
+    def delete_file(self, file_id):
+        pass
+
+    def download_file(self, file_id):
+        pass
+
+    def move_file(self, old_path, new_path):
+        pass
+
